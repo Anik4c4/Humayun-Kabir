@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ভাড়াটিয়া ম্যানেজমেন্ট ক্লাউড প্রো</title>
+    <style>
+        :root { --primary: #2c3e50; --success: #27ae60; --danger: #e74c3c; --info: #3498db; --warning: #f39c12; --bg: #f4f7f6; --card: #ffffff; --text: #333; --border: #ddd; }
+        .dark-mode { --bg: #1a1a1a; --card: #2c2c2c; --text: #eee; --border: #444; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; transition: 0.3s; }
+        .container { max-width: 1200px; margin: auto; background: var(--card); padding: 30px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--success); padding-bottom: 10px; }
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .stat-card { background: var(--card); padding: 20px; border-radius: 8px; text-align: center; border: 1px solid var(--border); border-top: 5px solid var(--success); }
+        .stat-card h4 { margin: 0; font-size: 0.9rem; color: #888; }
+        .stat-card p { margin: 10px 0 0; font-size: 1.8rem; font-weight: bold; }
+        .form-container { background: var(--bg); padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid var(--border); }
+        .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        input { padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text); }
+        .button-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        button { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; color: white; transition: 0.2s; font-size: 13px; }
+        .btn-save { background: var(--success); }
+        .btn-backup { background: var(--primary); }
+        .btn-theme { background: #555; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: rgba(0,0,0,0.05); }
+        .btn-wa { background: #25D366; }
+        #printArea { display: none; }
+        @media print {
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible; }
+            #printArea { display: block; position: absolute; left: 0; top: 0; width: 100%; }
+            .receipt-box { border: 2px solid #000; padding: 30px; width: 400px; margin: auto; background: white; color: black; line-height: 1.6;}
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🏠 ভাড়াটিয়া ম্যানেজমেন্ট ক্লাউড</h1>
+        <button class="btn-theme" onclick="toggleDarkMode()" id="themeBtn">🌙 ডার্ক মোড</button>
+    </div>
+
+    <div class="dashboard">
+        <div class="stat-card"><h4>মোট সংগ্রহ</h4><p id="totalRevenue">৳০</p></div>
+        <div class="stat-card"><h4>বিদ্যুৎ বিল</h4><p id="totalElec">৳০</p></div>
+        <div class="stat-card" style="border-top-color:var(--danger)"><h4>মোট বকেয়া</h4><p id="totalDues">৳০</p></div>
+    </div>
+
+    <div class="form-container">
+        <h3>📝 নতুন তথ্য (অটো-সিঙ্ক)</h3>
+        <div class="input-grid">
+            <input type="text" id="tenantName" placeholder="নাম">
+            <input type="text" id="tenantPhone" placeholder="ফোন (017...)">
+            <input type="number" id="rentAmount" placeholder="ভাড়া">
+            <input type="number" id="electricBill" placeholder="বিদ্যুৎ বিল">
+            <input type="number" id="gasBill" placeholder="গ্যাস বিল">
+            <input type="number" id="dueAmount" placeholder="বকেয়া">
+        </div>
+        <div class="button-group">
+            <button class="btn-save" onclick="addRecord()">✅ সেভ ও ক্লাউড সিঙ্ক</button>
+            <button class="btn-backup" onclick="exportData()">💾 ব্যাকআপ ডাউনলোড</button>
+            <button style="background:var(--warning)" onclick="document.getElementById('fileInput').click()">📂 রিস্টোর</button>
+            <input type="file" id="fileInput" style="display:none" accept=".json" onchange="importData(event)">
+        </div>
+    </div>
+
+    <input type="text" id="searchInput" onkeyup="filterRecords()" placeholder="🔍 নাম বা ফোন দিয়ে খুঁজুন..." style="width:100%; padding:12px; margin-bottom:20px; border-radius:6px; border:1px solid var(--border); background:var(--card); color:var(--text);">
+    
+    <div style="overflow-x:auto">
+        <table>
+            <thead>
+                <tr><th>তারিখ</th><th>নাম ও ফোন</th><th>ভাড়া</th><th>বিল</th><th>বকেয়া</th><th>মোট</th><th>অ্যাকশন</th></tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="printArea"></div>
+
+<script>
+    // গুরুত্বপূর্ণ: আপনার Google Web App URL এখানে বসান
+    const GOOGLE_SCRIPT_URL = 'https://docs.google.com/spreadsheets/d/1lWjzDMY47_jh0lhPvAOfjr-qmMhSv-uO2j5qTWCk-ow/edit?gid=0#gid=0'; 
+    
+    let records = JSON.parse(localStorage.getItem('tenantData')) || [];
+
+    function addRecord() {
+        const name = document.getElementById('tenantName').value;
+        const phone = document.getElementById('tenantPhone').value;
+        const rent = Number(document.getElementById('rentAmount').value);
+        const elec = Number(document.getElementById('electricBill').value);
+        const gas = Number(document.getElementById('gasBill').value);
+        const due = Number(document.getElementById('dueAmount').value);
+        const total = rent + elec + gas + due;
+
+        if (!name || !phone) return alert("নাম এবং ফোন নম্বর দিন");
+
+        const record = { id: Date.now(), date: new Date().toLocaleDateString('bn-BD'), name, phone, rent, elec, gas, due, total };
+
+        records.push(record);
+        saveLocally();
+        syncToCloud(record);
+        document.querySelectorAll('input').forEach(i => i.value = '');
+    }
+
+    function syncToCloud(data) {
+        if (GOOGLE_SCRIPT_URL.includes('YOUR_GOOGLE')) return;
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify(data)
+        }).then(() => console.log("Synced to Google Sheets")).catch(e => console.log("Sync failed"));
+    }
+
+    function saveLocally() {
+        localStorage.setItem('tenantData', JSON.stringify(records));
+        displayRecords();
+    }
+
+    function displayRecords() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        let rev = 0, el = 0, du = 0;
+
+        records.forEach(r => {
+            rev += (r.rent + r.elec + r.gas); el += r.elec; du += r.due;
+            tbody.innerHTML += `
+                <tr data-search="${r.name.toLowerCase()} ${r.phone}">
+                    <td>${r.date}</td>
+                    <td><strong>${r.name}</strong><br><small>${r.phone}</small></td>
+                    <td>৳${r.rent}</td>
+                    <td>৳${r.elec + r.gas}</td>
+                    <td>৳${r.due}</td>
+                    <td><strong>৳${r.total}</strong></td>
+                    <td>
+                        <button class="btn-wa" onclick="sendWhatsApp('${r.phone}', ${r.total})">WA</button>
+                        <button style="background:var(--info)" onclick="printSlip(${r.id})">রসিদ</button>
+                        <button style="background:var(--danger)" onclick="deleteRecord(${r.id})">X</button>
+                    </td>
+                </tr>`;
+        });
+        document.getElementById('totalRevenue').innerText = `৳${rev}`;
+        document.getElementById('totalElec').innerText = `৳${el}`;
+        document.getElementById('totalDues').innerText = `৳${du}`;
+    }
+
+    
+
+    function printSlip(id) {
+        const r = records.find(i => i.id === id);
+        document.getElementById('printArea').innerHTML = `
+            <div class="receipt-box">
+                <h2 style="text-align:center; margin:0">ভাড়ার রসিদ</h2>
+                <p style="text-align:center; margin-bottom:20px">বাড়িওয়ালার কপি / ভাড়াটিয়ার কপি</p>
+                <hr>
+                <p><strong>তারিখ:</strong> ${r.date}</p>
+                <p><strong>নাম:</strong> ${r.name}</p>
+                <p><strong>ফোন:</strong> ${r.phone}</p>
+                <hr>
+                <p>মাসিক ভাড়া: <span style="float:right">৳${r.rent}</span></p>
+                <p>বিদ্যুৎ বিল: <span style="float:right">৳${r.elec}</span></p>
+                <p>গ্যাস বিল: <span style="float:right">৳${r.gas}</span></p>
+                <p>বকেয়া: <span style="float:right">৳${r.due}</span></p>
+                <hr>
+                <h3 style="text-align:right">মোট প্রাপ্তি: ৳${r.total}</h3>
+                <br><br>
+                <div style="display:flex; justify-content:space-between">
+                    <p style="border-top:1px solid #000">ভাড়াটিয়া</p>
+                    <p style="border-top:1px solid #000">বাড়িওয়ালা</p>
+                </div>
+            </div>`;
+        window.print();
+    }
+
+    function deleteRecord(id) {
+        if(confirm("মুছে ফেলবেন?")) { records = records.filter(r => r.id !== id); saveLocally(); }
+    }
+
+    function filterRecords() {
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        document.querySelectorAll('#tableBody tr').forEach(row => {
+            row.style.display = row.getAttribute('data-search').includes(q) ? "" : "none";
+        });
+    }
+
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+    }
+
+    function exportData() {
+        const blob = new Blob([JSON.stringify(records)], {type: 'application/json'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `tenant_backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
+    }
+
+    function importData(event) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try { records = JSON.parse(e.target.result); saveLocally(); } catch (err) { alert("ভুল ফাইল"); }
+        };
+        reader.readAsText(event.target.files[0]);
+    }
+function sendWhatsApp(phone, total) {
+    // ১. ফোন নম্বর থেকে স্পেস বা ড্যাশ মুছে ফেলা
+    let cleanPhone = phone.replace(/[^0-9]/g, "");
+
+    // ২. নম্বর যদি ০ দিয়ে শুরু হয় (যেমন 017...), তবে শুরুতে 88 যোগ করা
+    if (cleanPhone.startsWith("0")) {
+        cleanPhone = "88" + cleanPhone;
+    }
+
+    // ৩. মেসেজ তৈরি করা
+    const msg = `সম্মানিত ভাড়াটিয়া, আপনার এই মাসের মোট ভাড়া ও বিল বাবদ ${total} টাকা হয়েছে। ধন্যবাদ।`;
+    
+    // ৪. সঠিক হোয়াটসঅ্যাপ লিঙ্ক (wa.me ব্যবহার করা হয়েছে যা সবচেয়ে নিরাপদ)
+    const waURL = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+    
+    // ৫. নতুন ট্যাবে ওপেন করা
+    window.open(waURL, '_blank');
+}
+
+
+    displayRecords();
+</script>
+</body>
+</html>
